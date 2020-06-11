@@ -19,6 +19,7 @@
   Wrapping happens with help of the function tl.Fn.
 """
 
+import jax
 from trax.math import numpy as jnp
 
 
@@ -109,7 +110,8 @@ def ClippedObjective(probs_ratio, advantages, epsilon):
   return clipped_objective
 
 
-def PPOObjective(dist_inputs, values, returns, actions, old_log_probs,
+def PPOObjective(dist_inputs, values, returns, dones, rewards,
+                 actions, old_log_probs,
                  log_prob_fun, epsilon, normalize_advantages):
   """PPO Objective."""
   # dist_inputs of the shape float32[128,1,18]
@@ -130,6 +132,11 @@ def PPOObjective(dist_inputs, values, returns, actions, old_log_probs,
       f'probs_ratio.shape was {probs_ratio.shape} and'
       f'old_log_probs.shape was {old_log_probs.shape}')
 
+  # jaxified versions of
+  # returns[dones] = rewards[dones]
+  # values[dones] = 0
+  jax.lax.index_update(returns, dones, rewards)
+  jax.lax.index_update(values, dones, 0)
   advantages = returns - values
   if normalize_advantages:
     advantages = advantages - jnp.mean(advantages)
